@@ -1,4 +1,4 @@
-package rtsp.processing.service;
+package processing.service;
 
 import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.Frame;
@@ -16,8 +16,13 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
@@ -34,7 +39,31 @@ public class ProcessingService {
     @Value("${target.service.url}")
     private String targetServiceUrl;
 
+    @Value("${file.directory}")
+    private String fileDirectory;
+
+    @Value("${file.name}")
+    private String fileName;
+
+    private Path filePath;
+
     private final RestTemplate restTemplate = new RestTemplate();
+
+    //Создание директории и файла для хранения результатов
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReadyEvent() {
+        filePath = Paths.get(fileDirectory, fileName);
+        try {
+            if (!Files.exists(Paths.get(fileDirectory))) {
+                Files.createDirectories(Paths.get(fileDirectory));
+                logger.info("Directory has been created: {}", fileDirectory);
+            }
+            Files.write(filePath, "".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            logger.info("File {} has been cleared", filePath.toString());
+        } catch (IOException e) {
+            logger.error("Error file cleanup", e);
+        }
+    }
 
     @Async
     @EventListener(ApplicationReadyEvent.class)
@@ -113,8 +142,19 @@ public class ProcessingService {
             String response = restTemplate.postForObject(targetServiceUrl, request, String.class);
             logger.info("The frame has been sent. Target service's response: {}", response);
 
+            saveJsonResponseToFile(response);
         } catch (Exception e) {
             logger.error("Error when sending a frame to the target service", e);
+        }
+    }
+
+    private void saveJsonResponseToFile(String jsonString) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            writer.write(jsonString);
+            writer.newLine();
+        } catch (IOException e) {
+            logger.error("Error adding JSON response to the file", e);
+            throw e;
         }
     }
 }
