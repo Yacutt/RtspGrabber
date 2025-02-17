@@ -75,3 +75,8 @@
 ### Target Service
 
 В файле targetService/receiving/src/main/resources/application.properties вы можете изменить порт, на котором будет запущен сервис (используется 8082)
+
+## Тестовые rtsp-видеопотоки  
+
+1. rtsp://37.230.146.42:554  
+2. rtsp://807e9439d5ca.entrypoint.cloud.wowza.com:1935/app-rC94792j/068b9c9a_stream2
